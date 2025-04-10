@@ -57,11 +57,41 @@ type TestData = {
   };
 };
 
+// Function to get random description for each category
+const getRandomDescription = async (category: string) => {
+  try {
+    // Query the database for a random description matching the category
+    const { data, error } = await supabase
+      .from('description_options')
+      .select('description')
+      .eq('category', category)
+      .order('id', { ascending: false })
+      .limit(1);
+    
+    if (error) {
+      console.error('Error fetching description:', error);
+      return category; // Return the category name as fallback
+    }
+    
+    // Return the description if found, otherwise return the category name
+    return data && data.length > 0 ? data[0].description : category;
+  } catch (error) {
+    console.error('Error in getRandomDescription:', error);
+    return category; // Return the category name as fallback
+  }
+};
+
+type Descriptions = {
+  [key: string]: string;
+};
+
 export default function ReportDetail({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [testData, setTestData] = useState<TestData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
+  const [descriptions, setDescriptions] = useState<Descriptions>({});
+  const [descriptionsLoading, setDescriptionsLoading] = useState(true);
 
   useEffect(() => {
     const fetchTestData = async () => {
@@ -97,6 +127,38 @@ export default function ReportDetail({ params }: { params: { id: string } }) {
 
     fetchTestData();
   }, [params.id, router]);
+  
+  // Fetch descriptions when testData changes
+  useEffect(() => {
+    const fetchDescriptions = async () => {
+      if (!testData) return;
+      
+      setDescriptionsLoading(true);
+      try {
+        // Fetch all needed descriptions
+        const categories = ['Rendah', 'Kurang', 'Cukup', 'Baik', 'Tinggi'];
+        const descriptionPromises = categories.map(category => 
+          getRandomDescription(category).then(desc => ({ category, description: desc }))
+        );
+        
+        const results = await Promise.all(descriptionPromises);
+        
+        // Convert to object format for easy access
+        const descriptionsObj: Descriptions = {};
+        results.forEach(({ category, description }) => {
+          descriptionsObj[category] = description;
+        });
+        
+        setDescriptions(descriptionsObj);
+      } catch (error) {
+        console.error('Error fetching descriptions:', error);
+      } finally {
+        setDescriptionsLoading(false);
+      }
+    };
+    
+    fetchDescriptions();
+  }, [testData]);
 
   const exportToExcel = async () => {
     if (!testData) return;
@@ -361,201 +423,227 @@ export default function ReportDetail({ params }: { params: { id: string } }) {
               <div>
                 <p className="text-sm font-medium text-gray-500">Logika Berpikir 1:</p>
                 <p className="text-base">
-                  {testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 80
-                    ? 'Rendah'
-                    : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 100
-                      ? 'Kurang'
-                      : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 120
-                        ? 'Cukup'
-                        : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 140
-                          ? 'Baik'
-                          : 'Tinggi'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 80
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 100
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 120
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.ist?.ra_berpikir_praktis && testData.ist.ra_berpikir_praktis < 140
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Daya Analisa 3:</p>
                 <p className="text-base">
-                  {testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 80
-                    ? 'Rendah'
-                    : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 100
-                      ? 'Kurang'
-                      : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 120
-                        ? 'Cukup'
-                        : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 140
-                          ? 'Baik'
-                          : 'Tinggi'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 80
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 100
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 120
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.ist?.an_fleksibilitas_pikir && testData.ist.an_fleksibilitas_pikir < 140
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Kemampuan Verbal 2 dan 4:</p>
                 <p className="text-base">
-                  {testData.ist?.wa_ge && testData.ist.wa_ge < 80
-                    ? 'Rendah'
-                    : testData.ist?.wa_ge && testData.ist.wa_ge < 100
-                      ? 'Kurang'
-                      : testData.ist?.wa_ge && testData.ist.wa_ge < 120
-                        ? 'Cukup'
-                        : testData.ist?.wa_ge && testData.ist.wa_ge < 140
-                          ? 'Baik'
-                          : 'Tinggi'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.ist?.wa_ge && testData.ist.wa_ge < 80
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.ist?.wa_ge && testData.ist.wa_ge < 100
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.ist?.wa_ge && testData.ist.wa_ge < 120
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.ist?.wa_ge && testData.ist.wa_ge < 140
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Kemampuan Numerik 5:</p>
                 <p className="text-base">
-                  {testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 80
-                    ? 'Rendah'
-                    : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 100
-                      ? 'Kurang'
-                      : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 120
-                        ? 'Cukup'
-                        : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 140
-                          ? 'Baik'
-                          : 'Tinggi'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 80
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 100
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 120
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.ist?.se_konkrit_praktis && testData.ist.se_konkrit_praktis < 140
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Sistematika Kerja (CDR):</p>
                 <p className="text-base">
-                  {testData.papikostick?.cdr && testData.papikostick.cdr < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.cdr && testData.papikostick.cdr < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.cdr && testData.papikostick.cdr < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.cdr && testData.papikostick.cdr < 9
-                          ? 'Baik'
-                          : testData.papikostick?.cdr === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.cdr && testData.papikostick.cdr < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.cdr && testData.papikostick.cdr < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.cdr && testData.papikostick.cdr < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.cdr && testData.papikostick.cdr < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.cdr === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Orientasi Hasil (NG):</p>
                 <p className="text-base">
-                  {testData.papikostick?.ng && testData.papikostick.ng < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.ng && testData.papikostick.ng < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.ng && testData.papikostick.ng < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.ng && testData.papikostick.ng < 9
-                          ? 'Baik'
-                          : testData.papikostick?.ng === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.ng && testData.papikostick.ng < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.ng && testData.papikostick.ng < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.ng && testData.papikostick.ng < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.ng && testData.papikostick.ng < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.ng === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Fleksibilitas (TV):</p>
                 <p className="text-base">
-                  {testData.papikostick?.tv && testData.papikostick.tv < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.tv && testData.papikostick.tv < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.tv && testData.papikostick.tv < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.tv && testData.papikostick.tv < 9
-                          ? 'Baik'
-                          : testData.papikostick?.tv === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.tv && testData.papikostick.tv < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.tv && testData.papikostick.tv < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.tv && testData.papikostick.tv < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.tv && testData.papikostick.tv < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.tv === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Motivasi Berprestasi (A):</p>
                 <p className="text-base">
-                  {testData.papikostick?.a && testData.papikostick.a < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.a && testData.papikostick.a < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.a && testData.papikostick.a < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.a && testData.papikostick.a < 9
-                          ? 'Baik'
-                          : testData.papikostick?.a === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.a && testData.papikostick.a < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.a && testData.papikostick.a < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.a && testData.papikostick.a < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.a && testData.papikostick.a < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.a === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Kerjasama (PI):</p>
                 <p className="text-base">
-                  {testData.papikostick?.pi && testData.papikostick.pi < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.pi && testData.papikostick.pi < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.pi && testData.papikostick.pi < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.pi && testData.papikostick.pi < 9
-                          ? 'Baik'
-                          : testData.papikostick?.pi === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.pi && testData.papikostick.pi < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.pi && testData.papikostick.pi < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.pi && testData.papikostick.pi < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.pi && testData.papikostick.pi < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.pi === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Keterampilan Interpersonal (BS):</p>
                 <p className="text-base">
-                  {testData.papikostick?.bs && testData.papikostick.bs < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.bs && testData.papikostick.bs < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.bs && testData.papikostick.bs < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.bs && testData.papikostick.bs < 9
-                          ? 'Baik'
-                          : testData.papikostick?.bs === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.bs && testData.papikostick.bs < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.bs && testData.papikostick.bs < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.bs && testData.papikostick.bs < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.bs && testData.papikostick.bs < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.bs === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Stabilitas Emosi (E PHQ):</p>
                 <p className="text-base">
-                  {testData.papikostick?.e && testData.papikostick.e < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.e && testData.papikostick.e < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.e && testData.papikostick.e < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.e && testData.papikostick.e < 9
-                          ? 'Baik'
-                          : testData.papikostick?.e === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.e && testData.papikostick.e < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.e && testData.papikostick.e < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.e && testData.papikostick.e < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.e && testData.papikostick.e < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.e === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Pengembangan Diri (W):</p>
                 <p className="text-base">
-                  {testData.papikostick?.w && testData.papikostick.w < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.w && testData.papikostick.w < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.w && testData.papikostick.w < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.w && testData.papikostick.w < 9
-                          ? 'Baik'
-                          : testData.papikostick?.w === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.w && testData.papikostick.w < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.w && testData.papikostick.w < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.w && testData.papikostick.w < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.w && testData.papikostick.w < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.w === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Mengelola Perubahan (ZK):</p>
                 <p className="text-base">
-                  {testData.papikostick?.zk && testData.papikostick.zk < 2
-                    ? 'Rendah'
-                    : testData.papikostick?.zk && testData.papikostick.zk < 4
-                      ? 'Kurang'
-                      : testData.papikostick?.zk && testData.papikostick.zk < 6
-                        ? 'Cukup'
-                        : testData.papikostick?.zk && testData.papikostick.zk < 9
-                          ? 'Baik'
-                          : testData.papikostick?.zk === 9
-                            ? 'Tinggi'
-                            : 'Cukup'}
+                  {descriptionsLoading ? 'Loading...' : (
+                    testData.papikostick?.zk && testData.papikostick.zk < 2
+                      ? `Rendah - ${descriptions['Rendah'] || 'Rendah'}`
+                      : testData.papikostick?.zk && testData.papikostick.zk < 4
+                        ? `Kurang - ${descriptions['Kurang'] || 'Kurang'}`
+                        : testData.papikostick?.zk && testData.papikostick.zk < 6
+                          ? `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                          : testData.papikostick?.zk && testData.papikostick.zk < 9
+                            ? `Baik - ${descriptions['Baik'] || 'Baik'}`
+                            : testData.papikostick?.zk === 9
+                              ? `Tinggi - ${descriptions['Tinggi'] || 'Tinggi'}`
+                              : `Cukup - ${descriptions['Cukup'] || 'Cukup'}`
+                  )}
                 </p>
               </div>
             </div>
